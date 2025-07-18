@@ -51,6 +51,16 @@ app.register_blueprint(profile_bp, url_prefix='/api')
 def test():
     return jsonify({'message': 'Prok Backend API is running successfully!', 'status': 'ok'})
 
+# Database initialization endpoint
+@app.route('/api/init-db')
+def init_database():
+    try:
+        with app.app_context():
+            db.create_all()
+        return jsonify({'message': 'Database initialized successfully!', 'status': 'ok'})
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 'error'}), 500
+
 @app.route('/')
 def home():
     return jsonify({'message': 'Prok Professional Networking API', 'status': 'running'})
@@ -58,17 +68,19 @@ def home():
 def setup_database():
     """Setup database tables"""
     with app.app_context():
-        db.create_all()
-        print("✅ Database tables created successfully!")
+        try:
+            db.create_all()
+            print("✅ Database tables created successfully!")
+        except Exception as e:
+            print(f"⚠️ Database setup warning: {e}")
 
 # Create a function to initialize the app
 def create_app():
     """Application factory function"""
+    # Setup database tables on app creation
+    setup_database()
     return app
 
 if __name__ == '__main__':
-    # Setup database tables
-    setup_database()
-    
     # Run the app
     app.run(debug=True) 
