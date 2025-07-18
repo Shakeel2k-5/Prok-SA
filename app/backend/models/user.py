@@ -19,7 +19,6 @@ class User(db.Model):
     posts = db.relationship('Post', back_populates='user', lazy=True, cascade='all, delete-orphan')
     # comments = db.relationship('Comment', backref='author', lazy=True, cascade='all, delete-orphan')
     # likes = db.relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
-    job_applications = db.relationship('JobApplication', backref='applicant', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
