@@ -15,7 +15,7 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await fetch('https://prok-professional-networking-qkyq.onrender.com/api/login', {
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -112,7 +112,7 @@ const Register = () => {
     setError('');
 
     try {
-      const response = await fetch('https://prok-professional-networking-qkyq.onrender.com/api/register', {
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -231,7 +231,7 @@ const Feed = () => {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch('https://prok-professional-networking-qkyq.onrender.com/api/posts');
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api/posts');
       const data = await response.json();
       if (response.ok) {
         setPosts(data.posts);
@@ -248,7 +248,7 @@ const Feed = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://prok-professional-networking-qkyq.onrender.com/api/posts', {
+      const response = await fetch((import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
