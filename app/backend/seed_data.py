@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models.user import User
 from models.post import Post, Comment, Like
-from models.profile import UserConnection
+from models.profile import UserProfile
 from models import db
 
 # SQLite and MySQL connection URIs
@@ -34,10 +34,10 @@ def migrate_table(Model):
 def main():
     # Order matters due to foreign keys
     migrate_table(User)
+    migrate_table(UserProfile)
     migrate_table(Post)
     migrate_table(Comment)
     migrate_table(Like)
-    migrate_table(UserConnection)
     print('✅ Data migration complete!')
 
 if __name__ == '__main__':

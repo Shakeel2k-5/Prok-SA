@@ -1,113 +1,135 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.post import Post, Comment, Like
-from models import db
+from models.post import Post, Like
 from models.user import User
-from models.profile import UserConnection
-from datetime import datetime
+from models import db
 
 feed_bp = Blueprint('feed', __name__)
 
 @feed_bp.route('/feed', methods=['GET'])
+@jwt_required()
 def get_feed():
     try:
-        # Temporarily use user_id = 1 for testing
-        user_id = 1
+        user_id = get_jwt_identity()
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
         
-        # Get all posts for now
-        feed_posts = Post.query.filter_by(status='active').order_by(Post.created_at.desc()).paginate(
+        # Get all posts with user info, ordered by creation date
+        posts = Post.query.order_by(Post.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
         
+        # Get user's liked posts for this page
+        user_likes = Like.query.filter_by(user_id=user_id).all()
+        liked_post_ids = {like.post_id for like in user_likes}
+        
+        # Prepare posts with like status
+        posts_data = []
+        for post in posts.items:
+            post_dict = post.to_dict()
+            post_dict['is_liked'] = post.id in liked_post_ids
+            posts_data.append(post_dict)
+        
         return jsonify({
-            'success': True,
-            'posts': [post.to_dict() for post in feed_posts.items],
-            'total': feed_posts.total,
-            'pages': feed_posts.pages,
-            'current_page': page
+            'posts': posts_data,
+            'total': posts.total,
+            'pages': posts.pages,
+            'current_page': page,
+            'per_page': per_page
         }), 200
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@feed_bp.route('/users', methods=['GET'])
-def get_users():
-    try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        search = request.args.get('search', '')
-        query = User.query
-        if search:
-            query = query.filter(
-                (User.username.contains(search)) | (User.bio.contains(search))
-            )
-        users = query.paginate(
-            page=page, per_page=per_page, error_out=False
-        )
-        return jsonify({
-            'users': [user.to_dict() for user in users.items],
-            'total': users.total,
-            'pages': users.pages,
-            'current_page': page
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@feed_bp.route('/users/<int:user_id>', methods=['GET'])
-def get_user_profile(user_id):
-    try:
-        user = User.query.get_or_404(user_id)
-        posts = Post.query.filter_by(user_id=user_id, status='active').order_by(
-            Post.created_at.desc()
-        ).limit(10)
-        return jsonify({
-            'user': user.to_dict(),
-            'posts': [post.to_dict() for post in posts]
-        }), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@feed_bp.route('/users/<int:user_id>/follow', methods=['POST'])
+@feed_bp.route('/feed/my-posts', methods=['GET'])
 @jwt_required()
-def follow_user(user_id):
-    try:
-        follower_id = get_jwt_identity()
-        if follower_id == user_id:
-            return jsonify({'error': 'Cannot follow yourself'}), 400
-        existing_connection = UserConnection.query.filter_by(
-            follower_id=follower_id, following_id=user_id
-        ).first()
-        if existing_connection:
-            db.session.delete(existing_connection)
-            message = 'User unfollowed successfully'
-        else:
-            connection = UserConnection(
-                follower_id=follower_id,
-                following_id=user_id,
-                status='accepted'  # Auto-accept for simplicity
-            )
-            db.session.add(connection)
-            message = 'User followed successfully'
-        db.session.commit()
-        return jsonify({
-            'message': message,
-            'following': existing_connection is None
-        }), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-@feed_bp.route('/connections', methods=['GET'])
-@jwt_required()
-def get_connections():
+def get_my_posts():
     try:
         user_id = get_jwt_identity()
-        followers = UserConnection.query.filter_by(following_id=user_id, status='accepted').all()
-        following = UserConnection.query.filter_by(follower_id=user_id, status='accepted').all()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Get user's posts
+        posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        # Get user's liked posts for this page
+        user_likes = Like.query.filter_by(user_id=user_id).all()
+        liked_post_ids = {like.post_id for like in user_likes}
+        
+        # Prepare posts with like status
+        posts_data = []
+        for post in posts.items:
+            post_dict = post.to_dict()
+            post_dict['is_liked'] = post.id in liked_post_ids
+            posts_data.append(post_dict)
+        
         return jsonify({
-            'followers': [User.query.get(conn.follower_id).to_dict() for conn in followers],
-            'following': [User.query.get(conn.following_id).to_dict() for conn in following]
+            'posts': posts_data,
+            'total': posts.total,
+            'pages': posts.pages,
+            'current_page': page,
+            'per_page': per_page
         }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@feed_bp.route('/feed/user/<int:user_id>/posts', methods=['GET'])
+def get_user_posts(user_id):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Get user's posts
+        posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        posts_data = [post.to_dict() for post in posts.items]
+        
+        return jsonify({
+            'posts': posts_data,
+            'user': user.to_dict(),
+            'total': posts.total,
+            'pages': posts.pages,
+            'current_page': page,
+            'per_page': per_page
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@feed_bp.route('/feed/search', methods=['GET'])
+def search_posts():
+    try:
+        query = request.args.get('q', '')
+        if not query:
+            return jsonify({'error': 'Search query is required'}), 400
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Search posts by content
+        posts = Post.query.filter(Post.content.ilike(f'%{query}%')).order_by(Post.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        posts_data = [post.to_dict() for post in posts.items]
+        
+        return jsonify({
+            'posts': posts_data,
+            'query': query,
+            'total': posts.total,
+            'pages': posts.pages,
+            'current_page': page,
+            'per_page': per_page
+        }), 200
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500 

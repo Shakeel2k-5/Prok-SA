@@ -12,7 +12,7 @@ load_dotenv()
 # Import models
 from models.user import User
 from models.post import Post, Comment, Like
-from models.profile import UserConnection
+from models.profile import UserProfile
 
 # Create Flask app
 app = Flask(__name__)
