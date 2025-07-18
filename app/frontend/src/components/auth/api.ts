@@ -1,19 +1,23 @@
-const API_URL = 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const authApi = {
-  login: async (credentials: { email: string; password: string }) => {
+  login: async (email: string, password: string) => {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
     });
     return response.json();
   },
 
-  signup: async (userData: { email: string; password: string; name: string }) => {
-    const response = await fetch(`${API_URL}/auth/signup`, {
+  register: async (userData: any) => {
+    const response = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(userData),
     });
     return response.json();

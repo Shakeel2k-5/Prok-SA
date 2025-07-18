@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const feedApi = {
   getFeed: async () => {
@@ -14,6 +14,17 @@ export const feedApi = {
     const response = await fetch(`${API_URL}/feed/user/${userId}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    return response.json();
+  },
+
+  likePost: async (postId: number) => {
+    const response = await fetch(`${API_URL}/posts/${postId}/like`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
       },
     });
     return response.json();
