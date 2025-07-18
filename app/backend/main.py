@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -46,6 +46,15 @@ app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(posts_bp, url_prefix='/api')
 app.register_blueprint(feed_bp, url_prefix='/api')
 app.register_blueprint(profile_bp, url_prefix='/api')
+
+# Test endpoint for deployment verification
+@app.route('/api/test')
+def test():
+    return jsonify({'message': 'Prok Backend API is running successfully!', 'status': 'ok'})
+
+@app.route('/')
+def home():
+    return jsonify({'message': 'Prok Professional Networking API', 'status': 'running'})
 
 def setup_database():
     """Setup database tables"""
