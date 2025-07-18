@@ -12,7 +12,6 @@ load_dotenv()
 # Import models
 from models.user import User
 from models.post import Post, Comment, Like
-from models.job import Company, Job, JobApplication
 from models.profile import UserConnection
 
 # Create Flask app
