@@ -1,5 +1,4 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
 const { getPool } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -96,22 +95,23 @@ router.get('/', async (req, res) => {
 });
 
 // Create new post
-router.post('/', authenticateToken, [
-  body('content').notEmpty().withMessage('Post content is required')
-], async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    console.log('=== POST /api/posts ===');
+    console.log('Request body:', req.body);
+    console.log('User:', req.user);
+    
+    const { content } = req.body;
 
-    const { content, imageUrl } = req.body;
+    // Validate that content is provided
+    if (!content || content.trim() === '') {
+      return res.status(400).json({ error: 'Post content is required' });
+    }
 
     const result = await dbRun(
       `INSERT INTO posts (user_id, content, image_url)
        VALUES (?, ?, ?)`,
-      [req.user.id, content, imageUrl || null]
+      [req.user.id, content, null]
     );
 
     const postId = result.rows[0].id;
@@ -139,16 +139,7 @@ router.post('/', authenticateToken, [
 
     res.status(201).json({
       message: 'Post created successfully',
-      post: {
-        ...post,
-        user: {
-          id: post.user_id,
-          username: post.username,
-          firstName: post.first_name,
-          lastName: post.last_name,
-          avatarUrl: post.avatar_url
-        }
-      }
+      post: post
     });
   } catch (error) {
     console.error('Create post error:', error);
@@ -157,18 +148,15 @@ router.post('/', authenticateToken, [
 });
 
 // Update post
-router.put('/:id', authenticateToken, [
-  body('content').notEmpty().withMessage('Post content is required')
-], async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
     const { id } = req.params;
     const { content, imageUrl } = req.body;
+
+    // Validate content is provided
+    if (!content || content.trim() === '') {
+      return res.status(400).json({ error: 'Post content is required' });
+    }
 
     // Check if post exists and belongs to user
     const existingPost = await dbGet(

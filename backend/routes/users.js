@@ -5,15 +5,54 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Helper function to handle database queries
+const dbQuery = async (sql, params = []) => {
+  const db = getPool();
+  const isSQLite = process.env.NODE_ENV !== 'production';
+  
+  if (isSQLite) {
+    return new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ rows });
+        }
+      });
+    });
+  } else {
+    return db.query(sql, params);
+  }
+};
+
+const dbGet = async (sql, params = []) => {
+  const db = getPool();
+  const isSQLite = process.env.NODE_ENV !== 'production';
+  
+  if (isSQLite) {
+    return new Promise((resolve, reject) => {
+      db.get(sql, params, (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ rows: row ? [row] : [] });
+        }
+      });
+    });
+  } else {
+    const result = await db.query(sql, params);
+    return { rows: result.rows };
+  }
+};
+
 // Get user profile by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const pool = getPool();
 
-    const result = await pool.query(
+    const result = await dbGet(
       `SELECT id, username, first_name, last_name, bio, avatar_url, created_at
-       FROM users WHERE id = $1`,
+       FROM users WHERE id = ?`,
       [id]
     );
 
@@ -24,8 +63,8 @@ router.get('/:id', async (req, res) => {
     const user = result.rows[0];
 
     // Get user's posts count
-    const postsResult = await pool.query(
-      'SELECT COUNT(*) as posts_count FROM posts WHERE user_id = $1',
+    const postsResult = await dbGet(
+      'SELECT COUNT(*) as posts_count FROM posts WHERE user_id = ?',
       [id]
     );
 
@@ -47,6 +86,28 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+const dbRun = async (sql, params = []) => {
+  const db = getPool();
+  const isSQLite = process.env.NODE_ENV !== 'production';
+  
+  if (isSQLite) {
+    return new Promise((resolve, reject) => {
+      db.run(sql, params, function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ 
+            rows: [{ id: this.lastID }],
+            rowCount: this.changes 
+          });
+        }
+      });
+    });
+  } else {
+    return db.query(sql, params);
+  }
+};
+
 // Update user profile
 router.put('/profile', authenticateToken, [
   body('firstName').notEmpty().withMessage('First name is required'),
@@ -61,14 +122,19 @@ router.put('/profile', authenticateToken, [
     }
 
     const { firstName, lastName, bio } = req.body;
-    const pool = getPool();
 
-    const result = await pool.query(
+    await dbRun(
       `UPDATE users 
-       SET first_name = $1, last_name = $2, bio = $3, updated_at = CURRENT_TIMESTAMP
-       WHERE id = $4
-       RETURNING id, username, email, first_name, last_name, bio, avatar_url`,
+       SET first_name = ?, last_name = ?, bio = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
       [firstName, lastName, bio || '', req.user.id]
+    );
+
+    // Get updated user data
+    const result = await dbGet(
+      `SELECT id, username, email, first_name, last_name, bio, avatar_url
+       FROM users WHERE id = ?`,
+      [req.user.id]
     );
 
     const user = result.rows[0];
@@ -95,9 +161,8 @@ router.put('/profile', authenticateToken, [
 router.get('/:id/posts', async (req, res) => {
   try {
     const { id } = req.params;
-    const pool = getPool();
 
-    const result = await pool.query(
+    const result = await dbQuery(
       `SELECT 
         p.id,
         p.content,
@@ -112,7 +177,7 @@ router.get('/:id/posts', async (req, res) => {
         u.avatar_url
       FROM posts p
       JOIN users u ON p.user_id = u.id
-      WHERE p.user_id = $1
+      WHERE p.user_id = ?
       ORDER BY p.created_at DESC`,
       [id]
     );
