@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Edit, Save, X, LogOut } from 'lucide-react';
-import api from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { Edit, Save, X, LogOut, ArrowLeft } from 'lucide-react';
+import { api } from '../services/api';
 import toast from 'react-hot-toast';
 
 interface UserProfile {
@@ -12,10 +13,12 @@ interface UserProfile {
   bio?: string;
   avatarUrl?: string;
   postsCount: number;
+  createdAt?: string;
 }
 
 const Profile: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -93,7 +96,15 @@ const Profile: React.FC = () => {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/feed')}
+                className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span>Back to Feed</span>
+              </button>
+            </div>
             <button
               onClick={handleLogout}
               className="flex items-center space-x-2 text-gray-600 hover:text-red-600 transition-colors"
@@ -106,9 +117,10 @@ const Profile: React.FC = () => {
 
         {/* Profile Card */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-6">Profile</h1>
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center space-x-4">
-              <div className="w-20 h-20 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-2xl">
+              <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-2xl">
                 {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
               </div>
               <div>
@@ -123,7 +135,7 @@ const Profile: React.FC = () => {
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 transition-colors"
+                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 transition-colors"
               >
                 <Edit className="w-5 h-5" />
                 <span>Edit</span>
@@ -213,26 +225,7 @@ const Profile: React.FC = () => {
           )}
         </div>
 
-        {/* Navigation */}
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <a
-              href="/feed"
-              className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
-            >
-              <h4 className="font-medium text-gray-900">View Feed</h4>
-              <p className="text-sm text-gray-600">See what's happening</p>
-            </a>
-            <button
-              onClick={() => setIsEditing(true)}
-              className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors text-left"
-            >
-              <h4 className="font-medium text-gray-900">Edit Profile</h4>
-              <p className="text-sm text-gray-600">Update your information</p>
-            </button>
-          </div>
-        </div>
+
       </div>
     </div>
   );
