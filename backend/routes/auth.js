@@ -22,7 +22,12 @@ const dbQuery = async (sql, params = []) => {
       });
     });
   } else {
-    return db.query(sql, params);
+    // Convert SQLite-style ? placeholders to PostgreSQL $1, $2, etc.
+    let postgresSql = sql;
+    for (let i = params.length; i > 0; i--) {
+      postgresSql = postgresSql.replace(/\?/g, `$${i}`);
+    }
+    return db.query(postgresSql, params);
   }
 };
 
@@ -41,7 +46,12 @@ const dbGet = async (sql, params = []) => {
       });
     });
   } else {
-    const result = await db.query(sql, params);
+    // Convert SQLite-style ? placeholders to PostgreSQL $1, $2, etc.
+    let postgresSql = sql;
+    for (let i = params.length; i > 0; i--) {
+      postgresSql = postgresSql.replace(/\?/g, `$${i}`);
+    }
+    const result = await db.query(postgresSql, params);
     return { rows: result.rows };
   }
 };
@@ -64,7 +74,16 @@ const dbRun = async (sql, params = []) => {
       });
     });
   } else {
-    return db.query(sql, params);
+    // Convert SQLite-style ? placeholders to PostgreSQL $1, $2, etc.
+    let postgresSql = sql;
+    for (let i = params.length; i > 0; i--) {
+      postgresSql = postgresSql.replace(/\?/g, `$${i}`);
+    }
+    const result = await db.query(postgresSql, params);
+    return { 
+      rows: result.rows,
+      rowCount: result.rowCount 
+    };
   }
 };
 
