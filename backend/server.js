@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const postRoutes = require('./routes/posts');
 const userRoutes = require('./routes/users');
 const { connectDB } = require('./config/database');
+const { setupDatabase } = require('./setup-db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -51,6 +52,24 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Database initialization endpoint (for debugging)
+app.post('/api/init-db', async (req, res) => {
+  try {
+    await setupDatabase();
+    res.json({ 
+      status: 'OK', 
+      message: 'Database initialized successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    res.status(500).json({ 
+      error: 'Database initialization failed',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Database error'
+    });
+  }
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
@@ -74,6 +93,18 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await connectDB();
+    
+    // Ensure database tables are created in production
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        await setupDatabase();
+        console.log('✅ Database tables verified/created');
+      } catch (error) {
+        console.error('⚠️ Database setup warning:', error.message);
+        // Don't exit, continue with server startup
+      }
+    }
+    
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV}`);

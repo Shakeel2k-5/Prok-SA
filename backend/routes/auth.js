@@ -137,7 +137,7 @@ router.post('/register', [
     console.error('Registration error:', error);
     res.status(500).json({ 
       error: 'Registration failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Database error'
+      details: error.message // Temporarily show error details for debugging
     });
   }
 });
@@ -194,7 +194,7 @@ router.post('/login', [
     console.error('Login error:', error);
     res.status(500).json({ 
       error: 'Login failed',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Database error'
+      details: error.message // Temporarily show error details for debugging
     });
   }
 });
