@@ -84,6 +84,20 @@ const dbRun = async (sql, params = []) => {
   }
 };
 
+// Debug endpoint to test SQL conversion
+router.get('/debug-sql', (req, res) => {
+  const testSql = 'SELECT id FROM users WHERE email = ? OR username = ?';
+  const testParams = ['test@example.com', 'testuser'];
+  const convertedSql = convertToPostgresParams(testSql, testParams);
+  
+  res.json({
+    originalSql: testSql,
+    params: testParams,
+    convertedSql: convertedSql,
+    environment: process.env.NODE_ENV
+  });
+});
+
 // Register user
 router.post('/register', [
   body('username').isLength({ min: 3, max: 50 }).withMessage('Username must be between 3 and 50 characters'),
