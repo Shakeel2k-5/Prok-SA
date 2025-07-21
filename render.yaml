@@ -21,4 +21,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://prok-sa.onrender.com/api 
+        value: https://prok-sa.onrender.com 
