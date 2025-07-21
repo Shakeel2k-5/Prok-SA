@@ -75,7 +75,11 @@ const dbRun = async (sql, params = []) => {
       });
     });
   } else {
-    const postgresSql = convertToPostgresParams(sql, params);
+    // For PostgreSQL, add RETURNING id if it's an INSERT statement
+    let postgresSql = convertToPostgresParams(sql, params);
+    if (postgresSql.trim().toUpperCase().startsWith('INSERT') && !postgresSql.includes('RETURNING')) {
+      postgresSql += ' RETURNING id';
+    }
     const result = await db.query(postgresSql, params);
     return { 
       rows: result.rows,
