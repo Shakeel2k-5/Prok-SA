@@ -12,5 +12,10 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true
   },
-  publicDir: 'public'
+  publicDir: 'public',
+  // Add SPA fallback for client-side routing
+  preview: {
+    port: 5173,
+    host: true
+  }
 }) 
