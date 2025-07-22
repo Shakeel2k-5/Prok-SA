@@ -176,12 +176,18 @@ const dbRun = async (sql, params = []) => {
   const db = getPool();
   const isSQLite = process.env.NODE_ENV !== 'production';
   
+  console.log('dbRun - Environment:', process.env.NODE_ENV);
+  console.log('dbRun - SQL:', sql);
+  console.log('dbRun - Params:', params);
+  
   if (isSQLite) {
     return new Promise((resolve, reject) => {
       db.run(sql, params, function(err) {
         if (err) {
+          console.error('SQLite run error:', err);
           reject(err);
         } else {
+          console.log('SQLite run result:', { lastID: this.lastID, changes: this.changes });
           resolve({ 
             rows: [{ id: this.lastID }],
             rowCount: this.changes 
@@ -190,7 +196,25 @@ const dbRun = async (sql, params = []) => {
       });
     });
   } else {
-    return db.query(sql, params);
+    // PostgreSQL - convert ? placeholders to $1, $2, etc. and add RETURNING id
+    let postgresSQL = sql;
+    for (let i = params.length; i > 0; i--) {
+      postgresSQL = postgresSQL.replace(/\?/g, `$${i}`);
+    }
+    
+    // Add RETURNING id if it's an INSERT statement
+    if (postgresSQL.trim().toUpperCase().startsWith('INSERT') && !postgresSQL.includes('RETURNING')) {
+      postgresSQL = postgresSQL.replace(/;$/, '') + ' RETURNING id;';
+    }
+    
+    console.log('PostgreSQL converted SQL:', postgresSQL);
+    
+    const result = await db.query(postgresSQL, params);
+    console.log('PostgreSQL run result:', result);
+    return { 
+      rows: result.rows.length > 0 ? result.rows : [],
+      rowCount: result.rowCount 
+    };
   }
 };
 
