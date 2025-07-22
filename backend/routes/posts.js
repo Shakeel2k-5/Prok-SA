@@ -196,18 +196,35 @@ const dbGet = async (sql, params = []) => {
   const db = getPool();
   const isSQLite = process.env.NODE_ENV !== 'production';
   
+  console.log('dbGet - Environment:', process.env.NODE_ENV);
+  console.log('dbGet - Database type:', isSQLite ? 'SQLite' : 'PostgreSQL');
+  console.log('dbGet - SQL:', sql);
+  console.log('dbGet - Params:', params);
+  
   if (isSQLite) {
     return new Promise((resolve, reject) => {
       db.get(sql, params, (err, row) => {
         if (err) {
+          console.error('SQLite error:', err);
           reject(err);
         } else {
+          console.log('SQLite result:', row);
           resolve({ rows: row ? [row] : [] });
         }
       });
     });
   } else {
-    const result = await db.query(sql, params);
+    // PostgreSQL - convert ? placeholders to $1, $2, etc.
+    let postgresSQL = sql;
+    for (let i = params.length; i > 0; i--) {
+      postgresSQL = postgresSQL.replace(/\?/g, `$${i}`);
+    }
+    
+    console.log('PostgreSQL converted SQL:', postgresSQL);
+    console.log('PostgreSQL params:', params);
+    
+    const result = await db.query(postgresSQL, params);
+    console.log('PostgreSQL result:', result.rows);
     return { rows: result.rows };
   }
 };
@@ -296,6 +313,7 @@ router.post('/', authenticateToken, async (req, res) => {
     console.log('NODE_ENV:', process.env.NODE_ENV);
     
     const { content } = req.body;
+    const isSQLite = process.env.NODE_ENV !== 'production';
 
     // Validate that content is provided
     if (!content || content.trim() === '') {
@@ -304,42 +322,84 @@ router.post('/', authenticateToken, async (req, res) => {
 
     console.log('About to insert post with user_id:', req.user.id);
     
-    const result = await dbRun(
-      `INSERT INTO posts (user_id, content, image_url)
-       VALUES (?, ?, ?)`,
-      [req.user.id, content, null]
-    );
+    if (isSQLite) {
+      const result = await dbRun(
+        `INSERT INTO posts (user_id, content, image_url)
+         VALUES (?, ?, ?)`,
+        [req.user.id, content, null]
+      );
 
-    console.log('Insert result:', result);
-    const postId = result.rows[0].id;
-    console.log('Post ID:', postId);
-    
-    // Get the created post with user info
-    const postResult = await dbGet(`
-      SELECT 
-        p.id,
-        p.content,
-        p.image_url,
-        p.likes_count,
-        p.created_at,
-        p.updated_at,
-        u.id as user_id,
-        u.username,
-        u.first_name,
-        u.last_name,
-        u.avatar_url
-      FROM posts p
-      JOIN users u ON p.user_id = u.id
-      WHERE p.id = ?
-    `, [postId]);
+      console.log('Insert result:', result);
+      const postId = result.rows[0].id;
+      console.log('Post ID:', postId);
+      
+      // Get the created post with user info
+      const postResult = await dbGet(`
+        SELECT 
+          p.id,
+          p.content,
+          p.image_url,
+          p.likes_count,
+          p.created_at,
+          p.updated_at,
+          u.id as user_id,
+          u.username,
+          u.first_name,
+          u.last_name,
+          u.avatar_url
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.id = ?
+      `, [postId]);
 
-    console.log('Post result:', postResult);
-    const post = postResult.rows[0];
+      console.log('Post result:', postResult);
+      const post = postResult.rows[0];
 
-    res.status(201).json({
-      message: 'Post created successfully',
-      post: post
-    });
+      res.status(201).json({
+        message: 'Post created successfully',
+        post: post
+      });
+    } else {
+      // PostgreSQL - use explicit NULL
+      const db = getPool();
+      const result = await db.query(
+        `INSERT INTO posts (user_id, content, image_url)
+         VALUES ($1, $2, NULL)
+         RETURNING id`,
+        [req.user.id, content]
+      );
+
+      console.log('Insert result:', result);
+      const postId = result.rows[0].id;
+      console.log('Post ID:', postId);
+      
+      // Get the created post with user info
+      const postResult = await db.query(`
+        SELECT 
+          p.id,
+          p.content,
+          p.image_url,
+          p.likes_count,
+          p.created_at,
+          p.updated_at,
+          u.id as user_id,
+          u.username,
+          u.first_name,
+          u.last_name,
+          u.avatar_url
+        FROM posts p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.id = $1
+      `, [postId]);
+
+      console.log('Post result:', postResult);
+      const post = postResult.rows[0];
+
+      res.status(201).json({
+        message: 'Post created successfully',
+        post: post
+      });
+    }
   } catch (error) {
     console.error('Create post error:', error);
     console.error('Error stack:', error.stack);
