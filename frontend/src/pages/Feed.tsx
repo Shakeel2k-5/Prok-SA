@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, MoreHorizontal, User, LogOut } from 'lucide-react';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
+import ApiTest from '../components/ApiTest';
 
 const BACKEND_URL = 'http://localhost:5000';
 
@@ -35,10 +36,18 @@ const Feed: React.FC = () => {
   const fetchPosts = async () => {
     setLoading(true);
     try {
+      console.log('=== FETCHING POSTS ===');
+      console.log('API Base URL:', import.meta.env.VITE_API_URL);
+      console.log('Token:', localStorage.getItem('token'));
+      
       const response = await api.get('/posts');
+      console.log('Posts response:', response.data);
+      
       setPosts(response.data.posts);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching posts:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       toast.error('Failed to load posts');
     } finally {
       setLoading(false);
@@ -49,9 +58,17 @@ const Feed: React.FC = () => {
     e.preventDefault();
     if (!newPost.trim()) return;
 
+    console.log('=== SUBMITTING POST ===');
+    console.log('User:', user);
+    console.log('Token:', localStorage.getItem('token'));
+    console.log('API Base URL:', import.meta.env.VITE_API_URL);
+    console.log('Content:', newPost);
+
     setSubmitting(true);
     try {
       const response = await api.post('/posts', { content: newPost });
+      
+      console.log('Post created successfully:', response.data);
       
       setPosts([response.data.post, ...posts]);
       setNewPost('');
@@ -60,6 +77,7 @@ const Feed: React.FC = () => {
       console.error('Error creating post:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
+      console.error('Error config:', error.config);
       
       if (error.response?.status === 401) {
         console.log('401 error - user needs to login again');
@@ -137,6 +155,11 @@ const Feed: React.FC = () => {
       </nav>
 
       <div className="max-w-2xl mx-auto py-8 px-4">
+        {/* API Test Component (temporary) */}
+        <div className="mb-6">
+          <ApiTest />
+        </div>
+
         {/* Welcome Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center space-x-4">
