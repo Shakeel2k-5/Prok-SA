@@ -10,7 +10,7 @@ services:
       - key: PORT
         value: 10000
       - key: JWT_SECRET
-        generateValue: true
+        value: prok-super-secret-jwt-key-2024-production
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: CORS_ORIGIN
