@@ -103,6 +103,90 @@ router.get('/debug-sql', (req, res) => {
   });
 });
 
+// Get token for default user (for testing)
+router.get('/get-default-token', async (req, res) => {
+  try {
+    const db = getPool();
+    const isSQLite = process.env.NODE_ENV !== 'production';
+    
+    if (!isSQLite) {
+      // Find the default user
+      const result = await db.query('SELECT id, username, email FROM users WHERE email = ?', ['shakeelabdullahgce@gmail.com']);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Default user not found. Create user first.' });
+      }
+      
+      const user = result.rows[0];
+      const token = generateToken(user.id);
+      
+      res.json({
+        message: 'Token generated for default user',
+        token: token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email
+        }
+      });
+    } else {
+      res.json({ message: 'This endpoint is for production only' });
+    }
+  } catch (error) {
+    console.error('Get default token error:', error);
+    res.status(500).json({ error: 'Failed to get token' });
+  }
+});
+
+// Create default user for production (temporary fix)
+router.post('/create-default-user', async (req, res) => {
+  try {
+    console.log('=== CREATING DEFAULT USER ===');
+    const db = getPool();
+    const isSQLite = process.env.NODE_ENV !== 'production';
+    
+    if (!isSQLite) {
+      // Check if user already exists
+      const existingUser = await db.query('SELECT id FROM users WHERE email = ?', ['shakeelabdullahgce@gmail.com']);
+      
+      if (existingUser.rows.length > 0) {
+        return res.json({ 
+          message: 'User already exists',
+          userId: existingUser.rows[0].id
+        });
+      }
+      
+      // Create default user
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      const result = await db.query(`
+        INSERT INTO users (username, email, password_hash, first_name, last_name, bio)
+        VALUES (?, ?, ?, ?, ?, ?)
+        RETURNING id
+      `, ['Shakeel2k5', 'shakeelabdullahgce@gmail.com', hashedPassword, 'Shakeel Abdullah', 'A.K', '']);
+      
+      const userId = result.rows[0].id;
+      console.log('Created user with ID:', userId);
+      
+      res.json({ 
+        message: 'Default user created successfully',
+        userId: userId,
+        credentials: {
+          email: 'shakeelabdullahgce@gmail.com',
+          password: 'password123'
+        }
+      });
+    } else {
+      res.json({ message: 'This endpoint is for production only' });
+    }
+  } catch (error) {
+    console.error('Create default user error:', error);
+    res.status(500).json({ 
+      error: 'Failed to create default user',
+      details: error.message
+    });
+  }
+});
+
 // Test endpoint to check what users exist in database
 router.get('/check-users', async (req, res) => {
   try {
