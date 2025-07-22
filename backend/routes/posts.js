@@ -35,20 +35,38 @@ router.post('/test-simple', async (req, res) => {
     
     const { content } = req.body || { content: 'Test post from simple endpoint' };
     
-    // Create post
-    const result = await dbRun(
-      `INSERT INTO posts (user_id, content, image_url)
-       VALUES (?, ?, ?)`,
-      [user.id, content, null]
-    );
-    
-    const postId = result.rows[0].id;
-    
-    res.status(201).json({
-      message: 'Simple test post created successfully',
-      postId: postId,
-      user: user
-    });
+    // Create post with proper null handling
+    if (isSQLite) {
+      const result = await dbRun(
+        `INSERT INTO posts (user_id, content, image_url)
+         VALUES (?, ?, ?)`,
+        [user.id, content, null]
+      );
+      
+      const postId = result.rows[0].id;
+      
+      res.status(201).json({
+        message: 'Simple test post created successfully',
+        postId: postId,
+        user: user
+      });
+    } else {
+      // PostgreSQL - use explicit NULL
+      const result = await db.query(
+        `INSERT INTO posts (user_id, content, image_url)
+         VALUES ($1, $2, NULL)
+         RETURNING id`,
+        [user.id, content]
+      );
+      
+      const postId = result.rows[0].id;
+      
+      res.status(201).json({
+        message: 'Simple test post created successfully',
+        postId: postId,
+        user: user
+      });
+    }
   } catch (error) {
     console.error('Simple test post error:', error);
     res.status(500).json({ 
@@ -65,24 +83,46 @@ router.post('/test-bypass', bypassAuth, async (req, res) => {
     console.log('User from bypass auth:', req.user);
     
     const { content } = req.body || { content: 'Test post from bypass auth' };
+    const isSQLite = process.env.NODE_ENV !== 'production';
 
     console.log('About to insert post with user_id:', req.user.id);
     
-    const result = await dbRun(
-      `INSERT INTO posts (user_id, content, image_url)
-       VALUES (?, ?, ?)`,
-      [req.user.id, content, null]
-    );
+    if (isSQLite) {
+      const result = await dbRun(
+        `INSERT INTO posts (user_id, content, image_url)
+         VALUES (?, ?, ?)`,
+        [req.user.id, content, null]
+      );
 
-    console.log('Insert result:', result);
-    const postId = result.rows[0].id;
-    console.log('Post ID:', postId);
-    
-    res.status(201).json({
-      message: 'Test post created successfully with bypass auth',
-      postId: postId,
-      user: req.user
-    });
+      console.log('Insert result:', result);
+      const postId = result.rows[0].id;
+      console.log('Post ID:', postId);
+      
+      res.status(201).json({
+        message: 'Test post created successfully with bypass auth',
+        postId: postId,
+        user: req.user
+      });
+    } else {
+      // PostgreSQL - use explicit NULL
+      const db = getPool();
+      const result = await db.query(
+        `INSERT INTO posts (user_id, content, image_url)
+         VALUES ($1, $2, NULL)
+         RETURNING id`,
+        [req.user.id, content]
+      );
+
+      console.log('Insert result:', result);
+      const postId = result.rows[0].id;
+      console.log('Post ID:', postId);
+      
+      res.status(201).json({
+        message: 'Test post created successfully with bypass auth',
+        postId: postId,
+        user: req.user
+      });
+    }
   } catch (error) {
     console.error('Test bypass post error:', error);
     res.status(500).json({ 
@@ -208,6 +248,7 @@ const dbRun = async (sql, params = []) => {
     }
     
     console.log('PostgreSQL converted SQL:', postgresSQL);
+    console.log('PostgreSQL params:', params);
     
     const result = await db.query(postgresSQL, params);
     console.log('PostgreSQL run result:', result);
