@@ -29,8 +29,6 @@ const Feed: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    console.log('Feed component - User:', user);
-    console.log('Feed component - Token:', localStorage.getItem('token'));
     fetchPosts();
   }, []);
 
@@ -38,7 +36,6 @@ const Feed: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.get('/posts');
-      console.log('Posts response:', response.data);
       setPosts(response.data.posts);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -52,13 +49,9 @@ const Feed: React.FC = () => {
     e.preventDefault();
     if (!newPost.trim()) return;
 
-    console.log('Submitting post with user:', user);
-    console.log('Token:', localStorage.getItem('token'));
-    
     setSubmitting(true);
     try {
       const response = await api.post('/posts', { content: newPost });
-      console.log('Post created successfully:', response.data);
       
       setPosts([response.data.post, ...posts]);
       setNewPost('');
@@ -223,7 +216,9 @@ const Feed: React.FC = () => {
                       <Heart className="w-5 h-5" />
                       <span>{post.likes_count}</span>
                     </button>
-                    <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-600 transition-colors">
+                    <button
+                      className="flex items-center space-x-2 text-gray-500 hover:text-blue-600 transition-colors"
+                    >
                       <span>Comment</span>
                     </button>
                   </div>
