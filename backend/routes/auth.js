@@ -303,6 +303,72 @@ router.get('/test-token', authenticateToken, async (req, res) => {
   }
 });
 
+// Create test user if none exist
+router.post('/create-test-user', async (req, res) => {
+  try {
+    console.log('=== CREATE TEST USER ===');
+    
+    // Check if any users exist
+    const existingUsers = await dbGet('SELECT COUNT(*) as count FROM users');
+    const userCount = existingUsers.rows[0]?.count || 0;
+    
+    console.log('Existing users:', userCount);
+    
+    if (userCount > 0) {
+      return res.json({ 
+        message: 'Users already exist',
+        count: userCount
+      });
+    }
+    
+    // Create a test user
+    const hashedPassword = await bcrypt.hash('test123', 10);
+    
+    const result = await dbRun(
+      'INSERT INTO users (username, email, password_hash, first_name, last_name, bio) VALUES (?, ?, ?, ?, ?, ?)',
+      ['testuser', 'test@example.com', hashedPassword, 'Test', 'User', 'This is a test user']
+    );
+    
+    console.log('Test user created with ID:', result.lastID);
+    
+    res.json({
+      message: 'Test user created successfully',
+      userId: result.lastID,
+      username: 'testuser',
+      email: 'test@example.com'
+    });
+  } catch (error) {
+    console.error('Create test user error:', error);
+    res.status(500).json({ 
+      error: 'Failed to create test user',
+      details: error.message
+    });
+  }
+});
+
+// Debug endpoint to check users in database
+router.get('/debug-users', async (req, res) => {
+  try {
+    console.log('=== DEBUG USERS ===');
+    const result = await dbGet('SELECT id, username, email, first_name, last_name FROM users LIMIT 10');
+    
+    console.log('Users found:', result.rows.length);
+    console.log('Users:', result.rows);
+    
+    res.json({
+      count: result.rows.length,
+      users: result.rows,
+      environment: process.env.NODE_ENV
+    });
+  } catch (error) {
+    console.error('Debug users error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get users',
+      details: error.message
+    });
+  }
+});
+
 // Register user
 router.post('/register', [
   body('username').isLength({ min: 3, max: 50 }).withMessage('Username must be between 3 and 50 characters'),
@@ -437,20 +503,36 @@ router.post('/login', [
 // Get current user profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
+    console.log('=== PROFILE ENDPOINT ===');
+    console.log('User from middleware:', req.user);
+    
+    if (!req.user) {
+      console.error('No user found in request');
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
+    const userProfile = {
+      id: req.user.id,
+      username: req.user.username,
+      email: req.user.email,
+      firstName: req.user.first_name,
+      lastName: req.user.last_name,
+      bio: req.user.bio,
+      avatarUrl: req.user.avatar_url
+    };
+    
+    console.log('Sending user profile:', userProfile);
+    
     res.json({
-      user: {
-        id: req.user.id,
-        username: req.user.username,
-        email: req.user.email,
-        firstName: req.user.first_name,
-        lastName: req.user.last_name,
-        bio: req.user.bio,
-        avatarUrl: req.user.avatar_url
-      }
+      user: userProfile
     });
   } catch (error) {
     console.error('Profile error:', error);
-    res.status(500).json({ error: 'Failed to get profile' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Failed to get profile',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
+    });
   }
 });
 

@@ -55,6 +55,40 @@ const ApiTest: React.FC = () => {
     }
   };
 
+  const testDebugUsers = async () => {
+    setLoading(true);
+    setTestResult('Checking users...');
+    
+    try {
+      const response = await api.get('/auth/debug-users');
+      console.log('Debug users response:', response.data);
+      
+      setTestResult(`✅ Users Check Successful!\nCount: ${response.data.count}\nUsers: ${JSON.stringify(response.data.users, null, 2)}`);
+    } catch (error: any) {
+      console.error('Debug Users Error:', error);
+      setTestResult(`❌ Users Check Failed!\nError: ${error.message}\nStatus: ${error.response?.status}\nData: ${JSON.stringify(error.response?.data)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createTestUser = async () => {
+    setLoading(true);
+    setTestResult('Creating test user...');
+    
+    try {
+      const response = await api.post('/auth/create-test-user');
+      console.log('Create test user response:', response.data);
+      
+      setTestResult(`✅ Test User Created!\n${JSON.stringify(response.data, null, 2)}`);
+    } catch (error: any) {
+      console.error('Create Test User Error:', error);
+      setTestResult(`❌ Create Test User Failed!\nError: ${error.message}\nStatus: ${error.response?.status}\nData: ${JSON.stringify(error.response?.data)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-4 bg-white rounded-lg shadow-sm">
       <h3 className="text-lg font-semibold mb-4">API Test</h3>
@@ -74,6 +108,22 @@ const ApiTest: React.FC = () => {
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 ml-2"
         >
           Test Authentication
+        </button>
+        
+        <button
+          onClick={testDebugUsers}
+          disabled={loading}
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 ml-2"
+        >
+          Check Users
+        </button>
+        
+        <button
+          onClick={createTestUser}
+          disabled={loading}
+          className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 ml-2"
+        >
+          Create Test User
         </button>
       </div>
       
