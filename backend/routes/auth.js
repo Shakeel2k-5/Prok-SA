@@ -103,6 +103,51 @@ router.get('/debug-sql', (req, res) => {
   });
 });
 
+// Simple login for existing user (for testing)
+router.post('/simple-login', async (req, res) => {
+  try {
+    console.log('=== SIMPLE LOGIN ===');
+    const db = getPool();
+    const isSQLite = process.env.NODE_ENV !== 'production';
+    
+    if (!isSQLite) {
+      // Find the existing user
+      const result = await db.query('SELECT id, username, email, first_name, last_name, bio, avatar_url FROM users WHERE id = 1');
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      const user = result.rows[0];
+      const token = generateToken(user.id);
+      
+      console.log('Generated token for user:', user.id);
+      
+      res.json({
+        message: 'Login successful',
+        token: token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          bio: user.bio,
+          avatarUrl: user.avatar_url
+        }
+      });
+    } else {
+      res.json({ message: 'This endpoint is for production only' });
+    }
+  } catch (error) {
+    console.error('Simple login error:', error);
+    res.status(500).json({ 
+      error: 'Login failed',
+      details: error.message
+    });
+  }
+});
+
 // Get token for default user (for testing)
 router.get('/get-default-token', async (req, res) => {
   try {
