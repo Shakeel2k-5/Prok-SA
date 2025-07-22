@@ -10,11 +10,11 @@ services:
       - key: PORT
         value: 10000
       - key: JWT_SECRET
-        value: prok-super-secret-jwt-key-2024-production
+        value: 49cb7f9c0d814bcd1851f23d3f5c8b91
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: CORS_ORIGIN
-        value: https://prok-frontend.onrender.com
+        value: https://prok-frontend-p339.onrender.com
       - key: RATE_LIMIT_WINDOW_MS
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
@@ -31,4 +31,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://prok-backend.onrender.com 
+        value: https://prok-backend-z3hf.onrender.com 
