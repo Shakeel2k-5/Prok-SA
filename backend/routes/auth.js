@@ -103,6 +103,30 @@ router.get('/debug-sql', (req, res) => {
   });
 });
 
+// Test endpoint to check what users exist in database
+router.get('/check-users', async (req, res) => {
+  try {
+    const db = getPool();
+    const isSQLite = process.env.NODE_ENV !== 'production';
+    
+    if (isSQLite) {
+      const result = await new Promise((resolve, reject) => {
+        db.all('SELECT id, username, email FROM users LIMIT 10', (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      });
+      res.json({ users: result, count: result.length });
+    } else {
+      const result = await db.query('SELECT id, username, email FROM users LIMIT 10');
+      res.json({ users: result.rows, count: result.rows.length });
+    }
+  } catch (error) {
+    console.error('Check users error:', error);
+    res.status(500).json({ error: 'Failed to check users' });
+  }
+});
+
 // Test endpoint to check JWT token without database lookup
 router.get('/test-jwt', async (req, res) => {
   try {
