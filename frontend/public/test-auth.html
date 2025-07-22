@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 3px; white-space: pre-wrap; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Test Page</h1>
+    
+    <div class="test-section">
+        <h3>1. Check Token</h3>
+        <button onclick="checkToken()">Check Token in localStorage</button>
+        <div id="tokenResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test JWT Decode</h3>
+        <button onclick="testJWT()">Test JWT Decode</button>
+        <div id="jwtResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Full Authentication</h3>
+        <button onclick="testAuth()">Test Full Auth</button>
+        <div id="authResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test Database Connection</h3>
+        <button onclick="testDB()">Test Database</button>
+        <div id="dbResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://prok-backend-z3hf.onrender.com/api';
+
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = JSON.stringify(data, null, 2);
+            element.className = `result ${isError ? 'error' : 'success'}`;
+        }
+
+        function checkToken() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                showResult('tokenResult', {
+                    hasToken: true,
+                    tokenLength: token.length,
+                    tokenStart: token.substring(0, 20) + '...',
+                    tokenEnd: '...' + token.substring(token.length - 20)
+                });
+            } else {
+                showResult('tokenResult', { hasToken: false }, true);
+            }
+        }
+
+        async function testJWT() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    showResult('jwtResult', { error: 'No token found' }, true);
+                    return;
+                }
+
+                const response = await fetch(`${API_BASE}/auth/test-jwt`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('jwtResult', data);
+                } else {
+                    showResult('jwtResult', data, true);
+                }
+            } catch (error) {
+                showResult('jwtResult', { error: error.message }, true);
+            }
+        }
+
+        async function testAuth() {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    showResult('authResult', { error: 'No token found' }, true);
+                    return;
+                }
+
+                const response = await fetch(`${API_BASE}/auth/test-token`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('authResult', data);
+                } else {
+                    showResult('authResult', data, true);
+                }
+            } catch (error) {
+                showResult('authResult', { error: error.message }, true);
+            }
+        }
+
+        async function testDB() {
+            try {
+                const response = await fetch(`${API_BASE}/posts/test`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('dbResult', data);
+                } else {
+                    showResult('dbResult', data, true);
+                }
+            } catch (error) {
+                showResult('dbResult', { error: error.message }, true);
+            }
+        }
+
+        // Auto-check token on page load
+        window.onload = function() {
+            checkToken();
+        };
+    </script>
+</body>
+</html> 
