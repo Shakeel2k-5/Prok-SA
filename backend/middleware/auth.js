@@ -41,6 +41,10 @@ const authenticateToken = async (req, res, next) => {
     if (!decoded.userId) {
       return res.status(401).json({ error: 'Invalid token format' });
     }
+
+    console.log('=== USER LOOKUP DEBUG ===');
+    console.log('Looking for user with ID:', decoded.userId);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
     
     // Get user from database
     const result = await dbGet(
@@ -48,11 +52,23 @@ const authenticateToken = async (req, res, next) => {
       [decoded.userId]
     );
 
+    console.log('Database query result:', result);
+    console.log('Number of rows returned:', result.rows.length);
+
     if (result.rows.length === 0) {
+      console.log('No user found with ID:', decoded.userId);
+      // Let's also check what users exist in the database
+      try {
+        const allUsers = await dbGet('SELECT id, username, email FROM users LIMIT 5');
+        console.log('Available users in database:', allUsers.rows);
+      } catch (err) {
+        console.error('Error checking available users:', err);
+      }
       return res.status(401).json({ error: 'Invalid token' });
     }
 
     req.user = result.rows[0];
+    console.log('User found and set:', req.user);
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
