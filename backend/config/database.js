@@ -20,7 +20,7 @@ const connectDB = async () => {
       client.release();
     } else {
       // Use SQLite for local development
-      const dbPath = path.join(__dirname, '../data/prok.db');
+      const dbPath = path.join(__dirname, '../uploads/prok.db');
       db = new sqlite3.Database(dbPath);
       
       console.log('✅ SQLite database connected successfully');

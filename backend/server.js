@@ -12,7 +12,7 @@ const { connectDB } = require('./config/database');
 const { setupDatabase } = require('./setup-db');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT) || 5000;
 
 // Security middleware
 app.use(helmet({
