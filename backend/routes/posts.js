@@ -4,6 +4,46 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Test endpoint to check database connection
+router.get('/test', async (req, res) => {
+  try {
+    console.log('=== TESTING DATABASE CONNECTION ===');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    
+    const db = getPool();
+    const isSQLite = process.env.NODE_ENV !== 'production';
+    
+    console.log('Database type:', isSQLite ? 'SQLite' : 'PostgreSQL');
+    
+    if (isSQLite) {
+      // Test SQLite connection
+      const result = await new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as count FROM posts', (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      console.log('SQLite test result:', result);
+    } else {
+      // Test PostgreSQL connection
+      const result = await db.query('SELECT COUNT(*) as count FROM posts');
+      console.log('PostgreSQL test result:', result.rows[0]);
+    }
+    
+    res.json({ 
+      status: 'Database connection successful',
+      environment: process.env.NODE_ENV,
+      databaseType: isSQLite ? 'SQLite' : 'PostgreSQL'
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({ 
+      error: 'Database connection failed',
+      details: error.message
+    });
+  }
+});
+
 // Helper function to handle database queries
 const dbQuery = async (sql, params = []) => {
   const db = getPool();
@@ -100,6 +140,7 @@ router.post('/', authenticateToken, async (req, res) => {
     console.log('=== POST /api/posts ===');
     console.log('Request body:', req.body);
     console.log('User:', req.user);
+    console.log('NODE_ENV:', process.env.NODE_ENV);
     
     const { content } = req.body;
 
@@ -108,13 +149,17 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Post content is required' });
     }
 
+    console.log('About to insert post with user_id:', req.user.id);
+    
     const result = await dbRun(
       `INSERT INTO posts (user_id, content, image_url)
        VALUES (?, ?, ?)`,
       [req.user.id, content, null]
     );
 
+    console.log('Insert result:', result);
     const postId = result.rows[0].id;
+    console.log('Post ID:', postId);
     
     // Get the created post with user info
     const postResult = await dbGet(`
@@ -135,6 +180,7 @@ router.post('/', authenticateToken, async (req, res) => {
       WHERE p.id = ?
     `, [postId]);
 
+    console.log('Post result:', postResult);
     const post = postResult.rows[0];
 
     res.status(201).json({
@@ -143,7 +189,16 @@ router.post('/', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Create post error:', error);
-    res.status(500).json({ error: 'Failed to create post' });
+    console.error('Error stack:', error.stack);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ 
+      error: 'Failed to create post',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Database error'
+    });
   }
 });
 
