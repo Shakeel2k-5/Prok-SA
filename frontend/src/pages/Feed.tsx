@@ -29,6 +29,8 @@ const Feed: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    console.log('Feed component - User:', user);
+    console.log('Feed component - Token:', localStorage.getItem('token'));
     fetchPosts();
   }, []);
 
@@ -50,9 +52,13 @@ const Feed: React.FC = () => {
     e.preventDefault();
     if (!newPost.trim()) return;
 
+    console.log('Submitting post with user:', user);
+    console.log('Token:', localStorage.getItem('token'));
+    
     setSubmitting(true);
     try {
       const response = await api.post('/posts', { content: newPost });
+      console.log('Post created successfully:', response.data);
       
       setPosts([response.data.post, ...posts]);
       setNewPost('');
@@ -60,7 +66,16 @@ const Feed: React.FC = () => {
     } catch (error: any) {
       console.error('Error creating post:', error);
       console.error('Error response:', error.response?.data);
-      toast.error(error.response?.data?.error || 'Failed to create post');
+      console.error('Error status:', error.response?.status);
+      
+      if (error.response?.status === 401) {
+        console.log('401 error - user needs to login again');
+        toast.error('Please log in again');
+        logout();
+        navigate('/login');
+      } else {
+        toast.error(error.response?.data?.error || 'Failed to create post');
+      }
     } finally {
       setSubmitting(false);
     }
