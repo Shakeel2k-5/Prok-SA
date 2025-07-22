@@ -50,10 +50,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
           const response = await api.get('/auth/profile');
           setUser(response.data.user);
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to get user profile:', error);
-          localStorage.removeItem('token');
-          setToken(null);
+          // Only remove token if it's a 401 error (unauthorized)
+          if (error.response?.status === 401) {
+            localStorage.removeItem('token');
+            setToken(null);
+            setUser(null);
+          } else {
+            // For other errors (like 500), keep the token but log the error
+            console.warn('Profile fetch failed but keeping token:', error.message);
+          }
         }
       }
       setLoading(false);
