@@ -1,8 +1,96 @@
 const express = require('express');
 const { getPool } = require('../config/database');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, bypassAuth } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Simple test endpoint without authentication
+router.post('/test-simple', async (req, res) => {
+  try {
+    console.log('=== SIMPLE TEST POST ===');
+    
+    // Get the first user from database
+    const db = getPool();
+    const isSQLite = process.env.NODE_ENV !== 'production';
+    
+    let user;
+    if (isSQLite) {
+      const result = await new Promise((resolve, reject) => {
+        db.get('SELECT id, username, email FROM users LIMIT 1', (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      user = result;
+    } else {
+      const result = await db.query('SELECT id, username, email FROM users LIMIT 1');
+      user = result.rows[0];
+    }
+    
+    if (!user) {
+      return res.status(404).json({ error: 'No users found in database' });
+    }
+    
+    console.log('Found user:', user);
+    
+    const { content } = req.body || { content: 'Test post from simple endpoint' };
+    
+    // Create post
+    const result = await dbRun(
+      `INSERT INTO posts (user_id, content, image_url)
+       VALUES (?, ?, ?)`,
+      [user.id, content, null]
+    );
+    
+    const postId = result.rows[0].id;
+    
+    res.status(201).json({
+      message: 'Simple test post created successfully',
+      postId: postId,
+      user: user
+    });
+  } catch (error) {
+    console.error('Simple test post error:', error);
+    res.status(500).json({ 
+      error: 'Simple test post failed',
+      details: error.message
+    });
+  }
+});
+
+// Test endpoint with bypass authentication
+router.post('/test-bypass', bypassAuth, async (req, res) => {
+  try {
+    console.log('=== TEST BYPASS POST ===');
+    console.log('User from bypass auth:', req.user);
+    
+    const { content } = req.body || { content: 'Test post from bypass auth' };
+
+    console.log('About to insert post with user_id:', req.user.id);
+    
+    const result = await dbRun(
+      `INSERT INTO posts (user_id, content, image_url)
+       VALUES (?, ?, ?)`,
+      [req.user.id, content, null]
+    );
+
+    console.log('Insert result:', result);
+    const postId = result.rows[0].id;
+    console.log('Post ID:', postId);
+    
+    res.status(201).json({
+      message: 'Test post created successfully with bypass auth',
+      postId: postId,
+      user: req.user
+    });
+  } catch (error) {
+    console.error('Test bypass post error:', error);
+    res.status(500).json({ 
+      error: 'Test bypass post failed',
+      details: error.message
+    });
+  }
+});
 
 // Test endpoint to check database connection
 router.get('/test', async (req, res) => {
