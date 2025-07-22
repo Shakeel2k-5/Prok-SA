@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { getPool } = require('../config/database');
 const { authenticateToken, generateToken } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
@@ -100,6 +101,53 @@ router.get('/debug-sql', (req, res) => {
     convertedSql: convertedSql,
     environment: process.env.NODE_ENV
   });
+});
+
+// Test endpoint to check JWT token without database lookup
+router.get('/test-jwt', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: 'JWT_SECRET not set' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    res.json({
+      status: 'JWT decoded successfully',
+      decoded: decoded,
+      hasUserId: !!decoded.userId
+    });
+  } catch (error) {
+    console.error('JWT test error:', error);
+    res.status(401).json({ 
+      error: 'JWT verification failed',
+      details: error.message
+    });
+  }
+});
+
+// Test endpoint to check JWT token
+router.get('/test-token', authenticateToken, async (req, res) => {
+  try {
+    res.json({
+      status: 'Token is valid',
+      user: {
+        id: req.user.id,
+        username: req.user.username,
+        email: req.user.email
+      }
+    });
+  } catch (error) {
+    console.error('Token test error:', error);
+    res.status(500).json({ error: 'Token test failed' });
+  }
 });
 
 // Register user
